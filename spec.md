@@ -1,59 +1,48 @@
 # 48LIVEUPDATE
 
 ## Current State
-New project. No existing application files. Scaffolded backend actor (empty) and frontend bindings only.
+- AdminPage.tsx ada tombol hapus (Trash2) untuk posts dan threads
+- Tombol hapus memanggil `deletePostMutation.mutate(post.id)` dan `deleteThreadMutation.mutate(thread.id)` -- fungsi sudah ada di useBackend.ts
+- Masalah: Admin table menampilkan `displayPosts` dan `displayThreads` yang fallback ke `MOCK_POSTS` / `MOCK_THREADS` jika data backend kosong
+- Saat backend kosong (belum ada data), mock data ditampilkan dan ID mock (1,2,3...) tidak valid di backend sehingga delete gagal
+- Tidak ada error handling atau feedback saat delete gagal/berhasil
+- Belum ada fitur embed/link konten dari website resmi tiap 48 Group
+- MOCK_MEMBERS dan MOCK_THREADS masih ada di mockData.ts
 
 ## Requested Changes (Diff)
 
 ### Add
-- Full-stack fandom community platform for AKB48 and 48 Group idol fanbase
-- Backend: Users, Posts (48LIVE news + 48RUMOR community posts), Forum threads/replies, Groups, Members, Comments, Likes, Bookmarks, Reports, Hashtags
-- Sticky top navbar: 48HOME, 48LIVE, 48RUMOR, 48DISSCUS, 48GROUP (dynamic dropdown), MEMBER, Search, Profile/Login
-- 48HOME landing page: hero banner, latest news section, trending rumors, hot discussions, trending hashtags, quick access groups
-- 48LIVE page: admin-only news articles, thumbnail, tags, comments, share, sorting (newest/popular)
-- 48RUMOR page: community posts (admin + users), Admin Verified / User Post labels, like/comment/report
-- 48DISSCUS forum: threads, replies, upvotes, categories (General, Per Group, Event, Member Talk)
-- 48GROUP dynamic system: default groups (AKB48, SKE48, NMB48, HKT48, NGT48, STU48, JKT48, BNK48, MNL48, TPE48, TSH48, CGM48, KLP48, SNH48, GNZ48, BEJ48, CKG48, CGK48), group pages with banner/description/related articles/member list/events
-- MEMBER page: list view (photo, name, group, team, status), filters (group/team/status), detail page (biodata, schedule, related articles, popularity stats)
-- User system: Register/Login, roles (Admin/User), profile editing (avatar, bio, favorite group), activity tracking (posts, comments, threads, bookmarks)
-- Admin panel: manage 48LIVE articles, 48RUMOR posts, users, forum moderation, groups, member database
-- Admin account: default username 48LIVEUPDATE, force password change on first login, passwords hashed in backend
-- Smart systems: global hashtag system, auto-link articles to group pages by tag, global search (articles/members/forum), trending algorithm (likes + views)
-- Extra features: notifications, dark/light theme toggle, bookmarks, report system, verified badge
+- Halaman atau section baru "Official Sites" di halaman Groups yang menampilkan card per group dengan:
+  - Nama group
+  - Link ke website resmi dengan tombol "Visit Official Site"
+  - Embed iframe (jika website mengizinkan) atau screenshot/preview card dengan link
+- Error handling di AdminPage: toast notification saat delete berhasil atau gagal
+- Loading state di tombol delete saat sedang proses
+- Konfirmasi dialog sebelum menghapus konten
+- Section "Embed Konten Official" di halaman GroupsPage individual (per group) menampilkan link ke website resmi dan social media
 
 ### Modify
-- N/A (new project)
+- AdminPage.tsx: Perbaiki logika delete -- jangan gunakan mock data untuk actions, hanya gunakan data dari backend
+- AdminPage.tsx: Pisahkan "real data" dari "display data" -- mock hanya untuk stats display, bukan untuk actions delete
+- AdminPage.tsx: Tambah delete confirmation dialog sebelum hapus
+- AdminPage.tsx: Tambah toast feedback setelah delete berhasil/gagal
+- GroupsPage.tsx: Tambah official website links untuk setiap group
+- mockData.ts: Hapus MOCK_MEMBERS dan MOCK_THREADS (atau kosongkan array), pertahankan MOCK_GROUPS dan MOCK_POSTS untuk fallback display
+- MembersPage.tsx: Tampilkan empty state jika tidak ada member dari backend (tidak fallback ke mock)
+- DiscussPage.tsx: Tampilkan empty state jika tidak ada thread dari backend (tidak fallback ke mock)
 
 ### Remove
-- N/A (new project)
+- Mock data member dari MOCK_MEMBERS (kosongkan array)
+- Mock data threads dari MOCK_THREADS (kosongkan array)
+- Fallback ke mock data di MembersPage dan DiscussPage
 
 ## Implementation Plan
-
-### Backend (Motoko)
-- User management: register, login (username/password with hashing), role management (admin/user), profile editing, force password change flag
-- Post management: create/read/update/delete articles (type: live/rumor), with hashtags, thumbnails, view count, like count
-- Comment system: add/delete comments on posts and forum threads
-- Forum system: threads, replies, upvotes, categories
-- Group management: CRUD for groups with default data seeded, admin-only mutations
-- Member database: CRUD for members (name, group, team, status, bio, photo)
-- Like/bookmark system: users can like posts and bookmark articles
-- Report system: flag posts/comments for moderation
-- Hashtag indexing: auto-link content by hashtag tags
-- Trending score: calculated from likes + views
-- Search: query across posts, members, forum threads
-- Notifications: in-app notifications for user activities
-
-### Frontend (React/TypeScript/Tailwind)
-- Dark theme as default with light theme toggle
-- Navbar component (sticky, with dynamic 48GROUP dropdown)
-- 48HOME landing page with hero, sections for latest/trending content
-- 48LIVE news portal page
-- 48RUMOR community posts page
-- 48DISSCUS forum page with thread/reply UI
-- 48GROUP dynamic pages
-- MEMBER list + detail pages
-- Auth pages: login, register
-- Profile page with activity tabs
-- Admin panel dashboard with all management features
-- Global search modal
-- Loading skeletons, hover glow effects, smooth transitions
+1. Update mockData.ts: kosongkan MOCK_MEMBERS dan MOCK_THREADS
+2. Update AdminPage.tsx:
+   - Gunakan data real dari backend untuk delete actions, bukan dari displayPosts/displayThreads
+   - Tambah AlertDialog konfirmasi sebelum delete
+   - Tambah toast notification dengan sonner setelah delete berhasil/gagal
+   - Tambah isPending state pada tombol delete
+3. Update GroupsPage.tsx: tambah official website URLs dan link cards untuk setiap group, section "Official Sites" di group detail page dengan iframe atau link preview
+4. Update MembersPage.tsx: tampilkan empty state jika backend kosong
+5. Update DiscussPage.tsx: tampilkan empty state jika backend kosong

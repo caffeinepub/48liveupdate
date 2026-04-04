@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, FileText, Globe, Users } from "lucide-react";
+import { ArrowLeft, ExternalLink, FileText, Globe, Users } from "lucide-react";
 import { motion } from "motion/react";
 import MemberCard from "../components/MemberCard";
 import PostCard from "../components/PostCard";
@@ -11,6 +12,30 @@ import {
   useLikePost,
   useListGroups,
 } from "../hooks/useBackend";
+
+const OFFICIAL_SITES: Record<string, { url: string; label: string }> = {
+  akb48: { url: "https://www.akb48.co.jp", label: "www.akb48.co.jp" },
+  ske48: { url: "https://www.ske48.co.jp", label: "www.ske48.co.jp" },
+  nmb48: { url: "https://www.nmb48.com", label: "www.nmb48.com" },
+  hkt48: { url: "https://www.hkt48.jp", label: "www.hkt48.jp" },
+  ngt48: { url: "https://www.ngt48.jp", label: "www.ngt48.jp" },
+  stu48: { url: "https://www.stu48.com", label: "www.stu48.com" },
+  jkt48: { url: "https://www.jkt48.com", label: "www.jkt48.com" },
+  bnk48: { url: "https://www.bnk48.com", label: "www.bnk48.com" },
+  mnl48: { url: "https://www.mnl48.com", label: "www.mnl48.com" },
+  tpe48: { url: "https://tpe48.com", label: "tpe48.com" },
+  tsh48: {
+    url: "https://www.tokushima48.jp",
+    label: "www.tokushima48.jp",
+  },
+  cgm48: { url: "https://www.cgm48.com", label: "www.cgm48.com" },
+  klp48: { url: "https://klp48.com", label: "klp48.com" },
+  snh48: { url: "https://www.snh48.com", label: "www.snh48.com" },
+  gnz48: { url: "https://gnz48.com", label: "gnz48.com" },
+  bej48: { url: "https://www.bej48.com", label: "www.bej48.com" },
+  ckg48: { url: "https://www.ckg48.com", label: "www.ckg48.com" },
+  cgk48: { url: "https://cgk48.id", label: "cgk48.id" },
+};
 
 function GroupDetailPage({ slug }: { slug: string }) {
   const { data: group, isLoading } = useFindGroupBySlug(slug);
@@ -26,6 +51,8 @@ function GroupDetailPage({ slug }: { slug: string }) {
   const groupMembers = MOCK_MEMBERS.filter(
     (m) => m.groupId === displayGroup?.id,
   );
+
+  const officialSite = slug ? OFFICIAL_SITES[slug.toLowerCase()] : null;
 
   if (isLoading) {
     return (
@@ -97,7 +124,8 @@ function GroupDetailPage({ slug }: { slug: string }) {
           {displayGroup.description || "No description available."}
         </p>
 
-        <div className="grid grid-cols-3 gap-4 mb-12">
+        {/* Stats grid */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
           {statsData.map(({ icon: Icon, label, value }) => (
             <div
               key={label}
@@ -113,6 +141,93 @@ function GroupDetailPage({ slug }: { slug: string }) {
             </div>
           ))}
         </div>
+
+        {/* Official Website Section */}
+        {officialSite && (
+          <div className="mb-12">
+            <p className="section-label mb-3">Official</p>
+            <h2 className="font-display font-bold text-xl text-foreground mb-4">
+              WEBSITE RESMI
+            </h2>
+            <div className="rounded-xl border border-border bg-card p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0 h-12 w-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <Globe className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <div className="font-display font-bold text-foreground">
+                    {displayGroup.name} Official Site
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-0.5">
+                    {officialSite.label}
+                  </div>
+                </div>
+              </div>
+              <Button
+                asChild
+                className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 shrink-0"
+                data-ocid="group.primary_button"
+              >
+                <a
+                  href={officialSite.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Kunjungi Website Resmi
+                </a>
+              </Button>
+            </div>
+
+            {/* Website Preview Card */}
+            <div className="mt-4 rounded-xl border border-border bg-card overflow-hidden">
+              <div className="h-10 bg-muted/50 border-b border-border flex items-center px-4 gap-2">
+                <div className="flex gap-1.5">
+                  <div className="h-3 w-3 rounded-full bg-destructive/60" />
+                  <div className="h-3 w-3 rounded-full bg-yellow-500/60" />
+                  <div className="h-3 w-3 rounded-full bg-green-500/60" />
+                </div>
+                <div className="flex-1 bg-background/60 rounded-md h-6 flex items-center px-3 max-w-sm mx-auto">
+                  <Globe className="h-3 w-3 text-muted-foreground mr-1.5 shrink-0" />
+                  <span className="text-xs text-muted-foreground truncate">
+                    {officialSite.label}
+                  </span>
+                </div>
+              </div>
+              <div className="p-8 text-center">
+                <div
+                  className="inline-flex items-center justify-center h-16 w-16 rounded-2xl mb-4"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, rgba(225,29,46,0.2) 0%, rgba(30,58,138,0.3) 100%)",
+                    border: "1px solid rgba(225,29,46,0.2)",
+                  }}
+                >
+                  <span className="font-display font-black text-xl text-primary">
+                    {displayGroup.name.replace("48", "")}
+                  </span>
+                </div>
+                <h3 className="font-display font-bold text-lg text-foreground mb-1">
+                  {displayGroup.name} Official Website
+                </h3>
+                <p className="text-sm text-muted-foreground mb-5">
+                  Kunjungi website resmi untuk berita, jadwal, dan informasi
+                  terbaru dari {displayGroup.name}.
+                </p>
+                <a
+                  href={officialSite.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+                  data-ocid="group.link"
+                >
+                  Buka Website Resmi
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
 
         {relatedPosts.length > 0 && (
           <section className="mb-12">

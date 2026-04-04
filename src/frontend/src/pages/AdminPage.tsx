@@ -1,3 +1,13 @@
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +23,7 @@ import { Navigate } from "@tanstack/react-router";
 import {
   Activity,
   Globe,
+  Loader2,
   MessageSquare,
   Newspaper,
   Plus,
@@ -24,6 +35,7 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
+import { toast } from "sonner";
 import SkeletonCard from "../components/SkeletonCard";
 import { MOCK_GROUPS, MOCK_POSTS, MOCK_THREADS } from "../data/mockData";
 import { formatRelativeTime } from "../data/mockData";
@@ -37,6 +49,11 @@ import {
   useListUserProfiles,
 } from "../hooks/useBackend";
 
+type DeleteTarget =
+  | { type: "post"; id: number }
+  | { type: "thread"; id: number }
+  | null;
+
 export default function AdminPage() {
   const { data: isAdmin, isLoading: checkingAdmin } = useIsCallerAdmin();
   const { data: posts } = useListPosts();
@@ -46,9 +63,46 @@ export default function AdminPage() {
   const deletePostMutation = useDeletePost();
   const deleteThreadMutation = useDeleteThread();
 
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
+
+  // Stats only use fallback mock for display numbers
   const displayPosts = posts?.length ? posts : MOCK_POSTS;
   const displayThreads = threads?.length ? threads : MOCK_THREADS;
   const displayGroups = groups?.length ? groups : MOCK_GROUPS;
+
+  // Real data only (no mock fallback) for deletable tables
+  const realPosts = posts ?? [];
+  const realThreads = threads ?? [];
+
+  const isPendingDelete =
+    deletePostMutation.isPending || deleteThreadMutation.isPending;
+
+  function confirmDelete() {
+    if (!deleteTarget) return;
+    if (deleteTarget.type === "post") {
+      deletePostMutation.mutate(deleteTarget.id, {
+        onSuccess: () => {
+          toast.success("Konten berhasil dihapus");
+          setDeleteTarget(null);
+        },
+        onError: () => {
+          toast.error("Gagal menghapus konten");
+          setDeleteTarget(null);
+        },
+      });
+    } else {
+      deleteThreadMutation.mutate(deleteTarget.id, {
+        onSuccess: () => {
+          toast.success("Konten berhasil dihapus");
+          setDeleteTarget(null);
+        },
+        onError: () => {
+          toast.error("Gagal menghapus konten");
+          setDeleteTarget(null);
+        },
+      });
+    }
+  }
 
   if (checkingAdmin) {
     return (
@@ -107,7 +161,7 @@ export default function AdminPage() {
           </p>
         </motion.div>
 
-        {/* Stats */}
+        {/* Stats — uses displayPosts/displayThreads (mock fallback ok here) */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           {[
             {
@@ -190,7 +244,7 @@ export default function AdminPage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* 48LIVE Articles */}
+          {/* 48LIVE Articles — real backend posts only */}
           <TabsContent value="articles">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-display font-bold text-lg text-foreground">
@@ -228,57 +282,80 @@ export default function AdminPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {displayPosts
-                    .filter((p) => p.isLive)
-                    .map((post, i) => (
-                      <TableRow
-                        key={post.id}
-                        className="border-border"
-                        data-ocid={`admin.row.${i + 1}`}
+                  {realPosts.filter((p) => p.isLive).length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={6}
+                        className="text-center py-12"
+                        data-ocid="admin.empty_state"
                       >
-                        <TableCell className="font-medium text-foreground max-w-xs">
-                          <span className="line-clamp-1">{post.title}</span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1 flex-wrap">
-                            {post.hashtags.slice(0, 2).map((h) => (
-                              <Badge
-                                key={h}
-                                className="text-xs bg-primary/10 text-primary border-primary/20"
-                              >
-                                {h}
-                              </Badge>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {post.likeCount}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {post.viewCount}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-xs">
-                          {formatRelativeTime(post.createdAt)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deletePostMutation.mutate(post.id)}
-                            data-ocid="admin.delete_button"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                        <div className="text-3xl mb-2">📰</div>
+                        <p className="text-muted-foreground text-sm">
+                          Belum ada artikel 48LIVE. Buat artikel pertama!
+                        </p>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    realPosts
+                      .filter((p) => p.isLive)
+                      .map((post, i) => (
+                        <TableRow
+                          key={post.id}
+                          className="border-border"
+                          data-ocid={`admin.row.${i + 1}`}
+                        >
+                          <TableCell className="font-medium text-foreground max-w-xs">
+                            <span className="line-clamp-1">{post.title}</span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1 flex-wrap">
+                              {post.hashtags.slice(0, 2).map((h) => (
+                                <Badge
+                                  key={h}
+                                  className="text-xs bg-primary/10 text-primary border-primary/20"
+                                >
+                                  {h}
+                                </Badge>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {post.likeCount}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {post.viewCount}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-xs">
+                            {formatRelativeTime(post.createdAt)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                setDeleteTarget({ type: "post", id: post.id })
+                              }
+                              disabled={isPendingDelete}
+                              data-ocid="admin.delete_button"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
+                            >
+                              {isPendingDelete &&
+                              deleteTarget?.id === post.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                  )}
                 </TableBody>
               </Table>
             </div>
           </TabsContent>
 
-          {/* 48RUMOR */}
+          {/* 48RUMOR — real backend posts only */}
           <TabsContent value="rumors">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-display font-bold text-lg text-foreground">
@@ -307,55 +384,77 @@ export default function AdminPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {displayPosts.map((post, i) => (
-                    <TableRow
-                      key={post.id}
-                      className="border-border"
-                      data-ocid={`admin.row.${i + 1}`}
-                    >
-                      <TableCell className="font-medium text-foreground max-w-xs">
-                        <span className="line-clamp-1">{post.title}</span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={
-                            post.isVerified
-                              ? "bg-blue-600/20 text-blue-400 border-blue-600/30 border"
-                              : "bg-muted text-muted-foreground"
-                          }
-                        >
-                          {post.isVerified ? "Verified" : "User Post"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {post.isReported && (
-                          <Badge className="bg-destructive/20 text-destructive border-destructive/30 border">
-                            Reported
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {post.likeCount}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deletePostMutation.mutate(post.id)}
-                          data-ocid="admin.delete_button"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                  {realPosts.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5}
+                        className="text-center py-12"
+                        data-ocid="admin.empty_state"
+                      >
+                        <div className="text-3xl mb-2">📣</div>
+                        <p className="text-muted-foreground text-sm">
+                          Belum ada konten rumor untuk dimoderasi.
+                        </p>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    realPosts.map((post, i) => (
+                      <TableRow
+                        key={post.id}
+                        className="border-border"
+                        data-ocid={`admin.row.${i + 1}`}
+                      >
+                        <TableCell className="font-medium text-foreground max-w-xs">
+                          <span className="line-clamp-1">{post.title}</span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            className={
+                              post.isVerified
+                                ? "bg-blue-600/20 text-blue-400 border-blue-600/30 border"
+                                : "bg-muted text-muted-foreground"
+                            }
+                          >
+                            {post.isVerified ? "Verified" : "User Post"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {post.isReported && (
+                            <Badge className="bg-destructive/20 text-destructive border-destructive/30 border">
+                              Reported
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {post.likeCount}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              setDeleteTarget({ type: "post", id: post.id })
+                            }
+                            disabled={isPendingDelete}
+                            data-ocid="admin.delete_button"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
+                          >
+                            {isPendingDelete && deleteTarget?.id === post.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
           </TabsContent>
 
-          {/* Forum */}
+          {/* Forum — real backend threads only */}
           <TabsContent value="forum">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-display font-bold text-lg text-foreground">
@@ -384,39 +483,62 @@ export default function AdminPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {displayThreads.map((thread, i) => (
-                    <TableRow
-                      key={thread.id}
-                      className="border-border"
-                      data-ocid={`admin.row.${i + 1}`}
-                    >
-                      <TableCell className="font-medium text-foreground max-w-xs">
-                        <span className="line-clamp-1">{thread.title}</span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className="text-xs bg-muted text-muted-foreground">
-                          {thread.category}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {thread.upvotes}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-xs">
-                        {formatRelativeTime(thread.createdAt)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteThreadMutation.mutate(thread.id)}
-                          data-ocid="admin.delete_button"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                  {realThreads.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5}
+                        className="text-center py-12"
+                        data-ocid="admin.empty_state"
+                      >
+                        <div className="text-3xl mb-2">💬</div>
+                        <p className="text-muted-foreground text-sm">
+                          Belum ada thread forum untuk dimoderasi.
+                        </p>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    realThreads.map((thread, i) => (
+                      <TableRow
+                        key={thread.id}
+                        className="border-border"
+                        data-ocid={`admin.row.${i + 1}`}
+                      >
+                        <TableCell className="font-medium text-foreground max-w-xs">
+                          <span className="line-clamp-1">{thread.title}</span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className="text-xs bg-muted text-muted-foreground">
+                            {thread.category}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {thread.upvotes}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-xs">
+                          {formatRelativeTime(thread.createdAt)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              setDeleteTarget({ type: "thread", id: thread.id })
+                            }
+                            disabled={isPendingDelete}
+                            data-ocid="admin.delete_button"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
+                          >
+                            {isPendingDelete &&
+                            deleteTarget?.id === thread.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -542,6 +664,50 @@ export default function AdminPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !isPendingDelete) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent
+          className="bg-card border-border"
+          data-ocid="admin.dialog"
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-foreground">
+              Hapus konten ini?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
+              Tindakan ini tidak dapat dibatalkan. Konten akan dihapus secara
+              permanen dari platform.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={isPendingDelete}
+              onClick={() => setDeleteTarget(null)}
+              data-ocid="admin.cancel_button"
+              className="border-border"
+            >
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={isPendingDelete}
+              data-ocid="admin.confirm_button"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isPendingDelete ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Ya, Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
